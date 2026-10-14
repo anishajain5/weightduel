@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import { deleteSecret, getSecret, setSecret } from "./storage";
 import type { AuthResponse } from "@wid/shared";
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -20,15 +20,15 @@ export const setSessionLostHandler = (fn: () => void) => {
 
 export async function saveSession(s: Pick<AuthResponse, "accessToken" | "refreshToken">) {
   accessToken = s.accessToken;
-  await SecureStore.setItemAsync(REFRESH_KEY, s.refreshToken);
+  await setSecret(REFRESH_KEY, s.refreshToken);
 }
 
 export async function clearSession() {
   accessToken = null;
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
+  await deleteSecret(REFRESH_KEY);
 }
 
-export const getStoredRefreshToken = () => SecureStore.getItemAsync(REFRESH_KEY);
+export const getStoredRefreshToken = () => getSecret(REFRESH_KEY);
 
 async function raw(path: string, method: string, body?: unknown, auth = true): Promise<Response> {
   return fetch(`${API_URL}${path}`, {

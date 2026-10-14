@@ -7,6 +7,10 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32),
   APP_BASE_URL: z.string().url(),
+  /** Where the Expo web app is hosted, e.g. https://app.example.com. Enables the web reset link. */
+  WEB_APP_URL: z.string().url().optional(),
+  /** Comma-separated extra browser origins allowed by CORS. */
+  CORS_ORIGINS: z.string().default(""),
   APP_SCHEME: z.string().default("weighinduel"),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL_FAST: z.string().default("claude-haiku-5-5"),
@@ -19,6 +23,10 @@ const schema = z.object({
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

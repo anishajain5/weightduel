@@ -1,3 +1,4 @@
+import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { ZodError } from "zod";
 import type { Db } from "./db";
@@ -6,17 +7,39 @@ import { HttpError } from "./lib/errors";
 import { createMailer, type Mailer } from "./mailer";
 import { authRoutes } from "./routes/auth";
 import { meRoutes } from "./routes/me";
+import { weighInRoutes } from "./routes/weigh-ins";
+import { createStorage, type PhotoStorage } from "./storage";
 import { resetPageRoutes } from "./routes/reset-page";
 
 export interface AppDeps {
   db: Db;
   env: Env;
   mailer: Mailer;
+  storage: PhotoStorage;
 }
 
-export function buildApp(input: { db: Db; env: Env; mailer?: Mailer }) {
+export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage }) {
   const app = Fastify({ logger: input.env.NODE_ENV !== "test", trustProxy: input.env.NODE_ENV === "production" });
-  const deps: AppDeps = { db: input.db, env: input.env, mailer: input.mailer ?? createMailer(input.env, app.log) };
+  const deps: AppDeps = { db: input.db, env: input.env, mailer: input.mailer ?? createMailer(input.env, app.log),
+    storage: input.storage ?? createStorage(input.env),
+  };
+
+  // Browser origins allowed to call the API (the Expo web app). Native apps send no Origin.
+  const origins = new Set(
+    [input.env.WEB_APP_URL, ...input.env.CORS_ORIGINS.split(",")]
+      .map((o) => o?.trim().replace(/\/$/, ""))
+      .filter((o): o is string => !!o),
+  );
+  if (input.env.NODE_ENV !== "production") {
+    ["http://localhost:8081", "http://localhost:19006"].forEach((o) => origins.add(o));
+  }
+  void app.register(cors, {
+    origin: (origin, cb) => cb(null, !origin || origins.has(origin)),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"],
+    exposedHeaders: ["Retry-After"],
+    maxAge: 600,
+  });
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof HttpError) {
@@ -40,6 +63,7 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer }) {
   void app.register(async (i) => authRoutes(i, deps));
   void app.register(async (i) => resetPageRoutes(i, deps));
   void app.register(async (i) => meRoutes(i, deps));
+  void app.register(async (i) => weighInRoutes(i, deps));
 
   return app;
 }

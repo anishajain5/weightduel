@@ -25,3 +25,11 @@
 - The reset email link opens the web fallback page, which hands off to the app via the custom scheme. Universal links / app links need a real domain (M7).
 - Terms and Privacy screens don't exist yet (M7); the signup switch only records acceptance.
 - A password reset or change doesn't invalidate access tokens already issued; they expire within 15 min.
+
+## Web (Expo web)
+The app also runs in the browser (`pnpm --filter @wid/mobile exec expo start --web`; `expo export --platform web` builds a static single-page bundle). Tokens use SecureStore on native and localStorage on web (`lib/storage.ts`). The API allows the web origin through `CORS_ORIGINS` / `WEB_APP_URL`. Web photo uploads PUT straight to R2, so the bucket needs a CORS rule for the web origin.
+
+## M2 Onboarding, daily log, profile: API and mobile written; not tried on a device
+**API**: `GET/PATCH /me` (full profile with start weight, streak, goal warning), `PUT/GET/DELETE /weigh-ins`, `POST /uploads/photo-url` (R2 pre-signed PUT, 503 `PHOTOS_UNAVAILABLE` when R2 is unconfigured). Migration `onboarding` adds `users.onboarded_at`. 9 integration tests in `test/weigh-ins.test.ts`.
+**Mobile**: 3-step onboarding gate (unit, start/goal weight, reminder time; the push permission prompt waits for M6), Log screen (date stepper back 14 days, LCD readout, custom keypad, scale photo, yes/no toggles, mood, notes), Profile editing and change password. Query cache is cleared on sign-out.
+**Known gaps**: R2 not configured so photo upload is untested; AI scale reading arrives in M5; reminder time is stored but nothing sends it until M6.

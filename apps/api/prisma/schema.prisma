@@ -55,6 +55,7 @@ model User {
   recipePrefs      Json?     @map("recipe_prefs")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  onboardedAt      DateTime? @map("onboarded_at") @db.Timestamptz
 
   refreshTokens     RefreshToken[]
   emailTokens       EmailToken[]

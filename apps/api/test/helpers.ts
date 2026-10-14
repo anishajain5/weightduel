@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { buildApp } from "../src/app";
 import { loadEnv } from "../src/env";
 import { MemoryMailer } from "../src/mailer";
+import { MemoryStorage } from "../src/storage";
 
 export function testEnv() {
   return loadEnv({
@@ -17,8 +18,9 @@ export function testEnv() {
 export function makeTestApp() {
   const db = new PrismaClient();
   const mailer = new MemoryMailer();
-  const app = buildApp({ db, env: testEnv(), mailer });
-  return { app, db, mailer };
+  const storage = new MemoryStorage();
+  const app = buildApp({ db, env: testEnv(), mailer, storage });
+  return { app, db, mailer, storage };
 }
 
 /** True when a real database is configured (integration tests run only then). */

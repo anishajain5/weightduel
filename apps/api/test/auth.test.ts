@@ -209,3 +209,12 @@ describe.skipIf(!hasDb)("auth (integration, real DB)", () => {
     expect(evil.body).not.toContain("alert(1)");
   });
 });
+
+describe("CORS", () => {
+  it("allows the local web app origin and rejects unknown ones", async () => {
+    const ok = await app.inject({ method: "OPTIONS", url: "/auth/login", headers: { origin: "http://localhost:8081", "access-control-request-method": "POST" } });
+    expect(ok.headers["access-control-allow-origin"]).toBe("http://localhost:8081");
+    const bad = await app.inject({ method: "OPTIONS", url: "/auth/login", headers: { origin: "https://evil.example", "access-control-request-method": "POST" } });
+    expect(bad.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+});
