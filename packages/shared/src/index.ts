@@ -4,3 +4,5 @@ export * from "./common-passwords";
 export * from "./dates";
 export * from "./body";
 export * from "./weighins";
+export * from "./groups";
+export * from "./score";

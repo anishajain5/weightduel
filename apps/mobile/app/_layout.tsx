@@ -30,6 +30,10 @@ function Gate() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={signedIn && verified && onboarded}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="group/new" options={{ headerShown: true, title: "New competition" }} />
+        <Stack.Screen name="group/[id]/index" options={{ headerShown: true, title: "Competition" }} />
+        <Stack.Screen name="group/[id]/manage" options={{ headerShown: true, title: "Manage" }} />
+        <Stack.Screen name="join" options={{ headerShown: true, title: "Join" }} />
       </Stack.Protected>
       <Stack.Protected guard={signedIn && verified && !onboarded}>
         <Stack.Screen name="onboarding" />

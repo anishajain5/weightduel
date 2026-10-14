@@ -33,3 +33,25 @@ The app also runs in the browser (`pnpm --filter @wid/mobile exec expo start --w
 **API**: `GET/PATCH /me` (full profile with start weight, streak, goal warning), `PUT/GET/DELETE /weigh-ins`, `POST /uploads/photo-url` (R2 pre-signed PUT, 503 `PHOTOS_UNAVAILABLE` when R2 is unconfigured). Migration `onboarding` adds `users.onboarded_at`. 9 integration tests in `test/weigh-ins.test.ts`.
 **Mobile**: 3-step onboarding gate (unit, start/goal weight, reminder time; the push permission prompt waits for M6), Log screen (date stepper back 14 days, LCD readout, custom keypad, scale photo, yes/no toggles, mood, notes), Profile editing and change password. Query cache is cleared on sign-out.
 **Known gaps**: R2 not configured so photo upload is untested; AI scale reading arrives in M5; reminder time is stored but nothing sends it until M6.
+
+## M3 Groups and race: API tested; mobile screens written, not tried on a device
+**API** (`apps/api/src/routes/groups.ts`): create / list / read / edit, join by code (with preview), leave, remove member, transfer, end, regenerate code, leaderboard, series (`lost` | `pct` | `weight`), feed, and a `/join/:code` share-link landing page.
+- Privacy lives in one pure function, `viewPermission` (`packages/shared/src/score.ts`), used by the leaderboard, series and feed. Under "% lost only", other members never see weights; they see only the metric the group scores on. Notes are never returned by any group endpoint. The photo switch hides other members' scale photos; you always see your own.
+- Baselines resolve lazily (BRD 4.5): the latest weigh-in within 3 days on or before the start date, else the first weigh-in after joining. Once found it is stored.
+- A group freezes when its end date passes (checked on read, no cron) or when the owner ends it; ending early sets the end date to today. Weigh-ins after the end date never count.
+- If the owner leaves, ownership passes to the longest-standing member; if nobody is left the group ends.
+- Rate limits: 10 group creations/day per user, 15 code lookups per 15 min per user.
+- Tests: `apps/api/test/groups.test.ts` (integration, real DB) and `packages/shared/src/score.test.ts` (pure `viewPermission`, `dailyScore`, `progress`).
+
+**Mobile**: Race tab (list, create, join), group screen (leaderboard, chart, feed, invite share/copy, leave), owner Manage screen. `weighinduel://join?code=ABC234` deep-links to the join screen.
+
+**Deviation to confirm:** the race chart uses `react-native-svg` (hand-drawn lines) instead of victory-native/Skia. Skia needs the CanvasKit wasm on web, which is fragile; react-native-svg renders identically on iOS, Android and web. Swapping later only touches `components/chart.tsx`.
+
+**Known gaps**: avatars are not built yet (initials only, none shown); the feed shows the latest 30 and has no "load more" button; no push notifications for joins or the winner until M6.
+
+## Photo upload: set up R2 (needed before photos work)
+Code is done and tested against the in-memory store; real R2 needs your credentials in `apps/api/.env`.
+1. Cloudflare dashboard, R2, create a bucket (e.g. `weighinduel-photos`). Keep it private.
+2. R2 > Manage API tokens > create a token with **Object Read & Write** on that bucket. Copy the Access Key ID and Secret.
+3. Fill in `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` in `apps/api/.env` and restart the API.
+4. For the web app, add a bucket CORS rule: allowed origins = your web app URL (and `http://localhost:8081` for dev), methods `PUT` and `GET`, allowed headers `Content-Type`.
