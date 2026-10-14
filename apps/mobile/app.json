@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Weigh-In Duel",
+    "slug": "weigh-in-duel",
+    "scheme": "weighinduel",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "app.weighinduel.mobile",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "app.weighinduel.mobile"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "cockroachdb"
+  url      = env("DATABASE_URL")
+}
+
+enum Unit {
+  kg
+  lb
+}
+
+enum EmailTokenPurpose {
+  verify
+  reset
+  change_email
+}
+
+enum Scoring {
+  pct
+  abs
+}
+
+enum Privacy {
+  pct_only
+  actual
+}
+
+enum GroupStatus {
+  active
+  ended
+}
+
+enum MemberRole {
+  owner
+  member
+}
+
+model User {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String    @unique
+  emailVerifiedAt  DateTime? @map("email_verified_at") @db.Timestamptz
+  passwordHash     String    @map("password_hash")
+  displayName      String    @map("display_name")
+  avatarKey        String?   @map("avatar_key")
+  unit             Unit      @default(kg)
+  goalWeightKg     Decimal?  @map("goal_weight_kg") @db.Decimal(5, 1)
+  heightCm         Decimal?  @map("height_cm") @db.Decimal(5, 1)
+  timezone         String    @default("UTC")
+  reminderTime     String?   @map("reminder_time")
+  quietStart       String    @default("22:00") @map("quiet_start")
+  quietEnd         String    @default("07:00") @map("quiet_end")
+  recipePrefs      Json?     @map("recipe_prefs")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+
+  refreshTokens     RefreshToken[]
+  emailTokens       EmailToken[]
+  ownedGroups       Group[]             @relation("GroupOwner")
+  memberships       GroupMember[]
+  weighIns          WeighIn[]
+  pushTokens        PushToken[]
+  notificationPrefs NotificationPref[]
+  notifications     Notification[]
+  savedRecipes      SavedRecipe[]
+  aiUsage           AiUsage[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  tokenHash   String    @map("token_hash")
+  deviceLabel String?   @map("device_label")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model EmailToken {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  purpose   EmailTokenPurpose
+  tokenHash String            @map("token_hash")
+  attempts  Int               @default(0)
+  expiresAt DateTime          @map("expires_at") @db.Timestamptz
+  usedAt    DateTime?         @map("used_at") @db.Timestamptz
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([tokenHash])
+  @@map("email_tokens")
+}
+
+model Group {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  ownerId       String      @map("owner_id") @db.Uuid
+  joinCode      String      @unique @map("join_code")
+  startDate     DateTime    @map("start_date") @db.Date
+  endDate       DateTime?   @map("end_date") @db.Date
+  scoring       Scoring     @default(pct)
+  maxMembers    Int         @default(20) @map("max_members")
+  privacy       Privacy     @default(pct_only)
+  photosVisible Boolean     @default(true) @map("photos_visible")
+  status        GroupStatus @default(active)
+  winnerUserId  String?     @map("winner_user_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id])
+  members GroupMember[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId      String     @map("group_id") @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  role         MemberRole @default(member)
+  baselineKg   Decimal?   @map("baseline_kg") @db.Decimal(5, 1)
+  baselineDate DateTime?  @map("baseline_date") @db.Date
+  joinedAt     DateTime   @default(now()) @map("joined_at") @db.Timestamptz
+  leftAt       DateTime?  @map("left_at") @db.Timestamptz
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model WeighIn {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  entryDate    DateTime @map("entry_date") @db.Date
+  weightKg     Decimal? @map("weight_kg") @db.Decimal(5, 1)
+  photoKey     String?  @map("photo_key")
+  ate          Boolean?
+  moved        Boolean?
+  slept        Boolean?
+  intent       Boolean?
+  mood         Int?     @db.Int2
+  notes        String?
+  aiReadWeight Decimal? @map("ai_read_weight")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entryDate])
+  @@index([userId, entryDate(sort: Desc)])
+  @@map("weigh_ins")
+}
+
+model PushToken {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  expoToken  String   @unique @map("expo_token")
+  platform   String
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+model NotificationPref {
+  userId String  @map("user_id") @db.Uuid
+  type   String
+  push   Boolean @default(true)
+  email  Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, type])
+  @@map("notification_prefs")
+}
+
+model Notification {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        String
+  title       String
+  body        String
+  data        Json?
+  readAt      DateTime? @map("read_at") @db.Timestamptz
+  sentPushAt  DateTime? @map("sent_push_at") @db.Timestamptz
+  sentEmailAt DateTime? @map("sent_email_at") @db.Timestamptz
+  dedupeKey   String    @unique @map("dedupe_key")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model SavedRecipe {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  craving   String
+  recipe    Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_recipes")
+}
+
+model AiUsage {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  feature      String
+  model        String
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  costUsd      Decimal  @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs    Int      @map("latency_ms")
+  status       String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, feature, createdAt])
+  @@map("ai_usage")
+}
