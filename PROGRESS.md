@@ -49,9 +49,8 @@ The app also runs in the browser (`pnpm --filter @wid/mobile exec expo start --w
 
 **Known gaps**: avatars are not built yet (initials only, none shown); the feed shows the latest 30 and has no "load more" button; no push notifications for joins or the winner until M6.
 
-## Photo upload: set up R2 (needed before photos work)
-Code is done and tested against the in-memory store; real R2 needs your credentials in `apps/api/.env`.
-1. Cloudflare dashboard, R2, create a bucket (e.g. `weighinduel-photos`). Keep it private.
-2. R2 > Manage API tokens > create a token with **Object Read & Write** on that bucket. Copy the Access Key ID and Secret.
-3. Fill in `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` in `apps/api/.env` and restart the API.
-4. For the web app, add a bucket CORS rule: allowed origins = your web app URL (and `http://localhost:8081` for dev), methods `PUT` and `GET`, allowed headers `Content-Type`.
+## Photo upload: stored in CockroachDB (deviation from the BRD, by your choice)
+Photos live in the `photos` table (`bytea`). The "pre-signed" URLs point back at this API (`PUT /photos/upload`, `GET /photos/file`) and carry an HMAC signature and expiry, so uploads and image loads need no auth header. Hard limits: 450 KB per photo (the app compresses to 1024 px JPEG and steps quality down to fit 400 KB), JPEG/PNG/WebP only (checked by magic bytes), single-use upload links, 40 uploads/day per user. Deleting an entry deletes its photo; deleting a user cascades.
+- **R2 is still supported:** fill in the four `R2_*` values in `apps/api/.env` and the API switches to R2 automatically (then the bucket needs private access, an Object Read & Write token, and a CORS rule for the web origin: `PUT`/`GET`, header `Content-Type`). Existing DB photos would not be migrated automatically.
+- **Why it's not ideal long term:** photos bloat the database, add to request-unit cost, and are served through the API. Fine for a friends-sized app.
+- **Gaps:** photos uploaded but never attached to an entry are orphaned (no cleanup job yet); the 1-second DB latency applies to every image load.

@@ -62,6 +62,7 @@ model User {
   ownedGroups       Group[]             @relation("GroupOwner")
   memberships       GroupMember[]
   weighIns          WeighIn[]
+  photos            Photo[]
   pushTokens        PushToken[]
   notificationPrefs NotificationPref[]
   notifications     Notification[]
@@ -141,6 +142,21 @@ model GroupMember {
   @@id([groupId, userId])
   @@index([userId])
   @@map("group_members")
+}
+
+/// Scale photos stored in the database (used when R2 isn't configured).
+model Photo {
+  key         String   @id
+  userId      String   @map("user_id") @db.Uuid
+  contentType String   @map("content_type")
+  size        Int
+  bytes       Bytes
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("photos")
 }
 
 model WeighIn {

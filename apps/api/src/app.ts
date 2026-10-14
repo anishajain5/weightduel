@@ -10,6 +10,7 @@ import { meRoutes } from "./routes/me";
 import { weighInRoutes } from "./routes/weigh-ins";
 import { groupRoutes } from "./routes/groups";
 import { joinPageRoutes } from "./routes/join-page";
+import { photoRoutes } from "./routes/photos";
 import { createStorage, type PhotoStorage } from "./storage";
 import { resetPageRoutes } from "./routes/reset-page";
 
@@ -23,7 +24,7 @@ export interface AppDeps {
 export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage }) {
   const app = Fastify({ logger: input.env.NODE_ENV !== "test", trustProxy: input.env.NODE_ENV === "production" });
   const deps: AppDeps = { db: input.db, env: input.env, mailer: input.mailer ?? createMailer(input.env, app.log),
-    storage: input.storage ?? createStorage(input.env),
+    storage: input.storage ?? createStorage(input.env, input.db),
   };
 
   // Browser origins allowed to call the API (the Expo web app). Native apps send no Origin.
@@ -68,6 +69,7 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: P
   void app.register(async (i) => weighInRoutes(i, deps));
   void app.register(async (i) => groupRoutes(i, deps));
   void app.register(async (i) => joinPageRoutes(i, deps));
+  void app.register(async (i) => photoRoutes(i, deps));
 
   return app;
 }
