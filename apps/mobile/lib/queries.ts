@@ -36,3 +36,8 @@ import type { PatternsResponse } from "@wid/shared";
 /** `/patterns/me` or `/patterns/:groupId/:userId`. */
 export const usePatterns = (path: string, days: number) =>
   useQuery({ queryKey: ["patterns", path, days], queryFn: () => api<PatternsResponse>(`${path}?days=${days}`) });
+
+import type { SavedRecipe } from "@wid/shared";
+
+export const useSavedRecipes = () =>
+  useQuery({ queryKey: ["recipes"], queryFn: async () => (await api<{ recipes: SavedRecipe[] }>("/recipes")).recipes });

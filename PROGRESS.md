@@ -61,3 +61,14 @@ Photos live in the `photos` table (`bytea`). The "pre-signed" URLs point back at
 - API: `GET /patterns/me?days=` and `GET /patterns/:groupId/:userId` (403 `PATTERNS_HIDDEN` unless the group privacy is "actual"). Queries select only date, weight, habits and mood; notes are never read.
 - Mobile: **Why** tab with overlay chart (weight line + score bars, hand-drawn with react-native-svg), habit table and weekly table, 30/90/180-day ranges. Leaderboard rows link to a member's patterns when the group is "actual".
 - Not yet: Coach button (M5).
+
+## M5 — AI (Anthropic API, server-side only)
+
+- `apps/api/src/ai/`: `AiClient` seam over `@anthropic-ai/sdk` (tests use `FakeAi`), `AiGate` (per-user daily limits from `ai_usage`, global `AI_DAILY_BUDGET_USD` cap, usage + cost logging). Costs are estimates from a built-in price table.
+- `POST /ai/scale-read` (15/day, Haiku): reads your own uploaded photo, validates the JSON, treats readings outside 25–300 kg as unreadable, converts to your unit. The app only *suggests* the number; you tap "Use" to confirm, and low confidence says "Best guess, check before saving".
+- `POST /ai/coach` (3/day, Sonnet) streams server-sent events. Sends the last 45 days (numbers, habits, mood, notes cut to 80 chars) plus computed habit effects and weekly table. No name or email goes to the model. Cached 12 h in `coach_readings` unless the data changed; cached reads and the "too few days" reply don't use up the daily limit.
+- `POST /ai/recipe` (10/day, Sonnet) validates the recipe JSON with zod; craving text is sanitised. `GET/POST/DELETE /recipes` for saved recipes (max 100).
+- Without `ANTHROPIC_API_KEY` the AI endpoints answer 503 `AI_UNAVAILABLE`; when the daily budget is spent, 503 `AI_RESTING`.
+- Mobile: Coach card on **Why**, **Cravings** tab (chips, preferences saved to profile, recipe card, "Give me a different one", Save), **Saved recipes** screen (linked from Profile and Cravings), scale reader suggestion on the Log photo.
+- Not done: group standings in the coach prompt (BRD marks it optional/"if privacy allows"). Not verified against the real Anthropic API yet (needs a key); tests use a fake model.
+- Migration `20261014180000_coach_readings`.

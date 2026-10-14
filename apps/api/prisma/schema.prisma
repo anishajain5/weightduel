@@ -68,6 +68,7 @@ model User {
   notifications     Notification[]
   savedRecipes      SavedRecipe[]
   aiUsage           AiUsage[]
+  coachReadings     CoachReading[]
 
   @@map("users")
 }
@@ -255,6 +256,20 @@ model AiUsage {
 
   @@index([userId, feature, createdAt])
   @@map("ai_usage")
+}
+
+/// Cached coach reads: reused for 12 h unless the user's data changed (dataHash).
+model CoachReading {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  dataHash  String   @map("data_hash")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("coach_readings")
 }
 
 /// Sliding-window rate limit events (login failures, reset requests, ...).

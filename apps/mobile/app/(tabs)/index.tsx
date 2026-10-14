@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Text, TextInput, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fromKg, isValidKg, MAX_KG, MIN_KG, toKg, todayInTz, type WeighInInput } from "@wid/shared";
+import { fromKg, isValidKg, MAX_KG, MIN_KG, toKg, todayInTz, type ScaleReadResponse, type WeighInInput } from "@wid/shared";
 import { Button, ErrorText, Screen, useTheme } from "../../components/ui";
 import { DateStepper, Keypad, Lcd, MoodPicker, Stat, TriToggle } from "../../components/log";
 import { api, ApiError } from "../../lib/api";
@@ -26,6 +26,7 @@ export default function LogScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [reading, setReading] = useState<{ value: number; low: boolean } | "none" | "reading" | null>(null);
 
   // Load the saved entry whenever the date (or its data) changes.
   useEffect(() => {
@@ -67,6 +68,17 @@ export default function LogScreen() {
     },
   });
 
+  /** AI scale reader: only suggests a number; the user taps "Use" to confirm. Failures are silent (typing still works). */
+  const readScale = async (key: string) => {
+    setReading("reading");
+    try {
+      const r = await api<ScaleReadResponse>("/ai/scale-read", { body: { photoKey: key } });
+      setReading(r.weightInUserUnit === null ? "none" : { value: r.weightInUserUnit, low: r.confidence === "low" });
+    } catch {
+      setReading(null);
+    }
+  };
+
   const addPhoto = async (source: "camera" | "library") => {
     setUploading(true);
     setError(null);
@@ -75,6 +87,7 @@ export default function LogScreen() {
       if (p) {
         setPhoto({ key: p.key, uri: p.localUri });
         setSaved(false);
+        void readScale(p.key);
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Couldn't add that photo.");
@@ -108,7 +121,17 @@ export default function LogScreen() {
           <View style={{ flex: 1 }}><Button title="Camera" onPress={() => addPhoto("camera")} busy={uploading} /></View>
           <View style={{ flex: 1 }}><Button title="Library" onPress={() => addPhoto("library")} busy={uploading} /></View>
         </View>
-        {photo ? <Button kind="link" title="Remove photo" onPress={() => { setPhoto(null); setSaved(false); }} /> : null}
+        {reading === "reading" ? <Text accessibilityLiveRegion="polite" style={{ color: t.muted, marginTop: 8 }}>Reading the scale…</Text> : null}
+        {reading === "none" ? <Text accessibilityLiveRegion="polite" style={{ color: t.muted, marginTop: 8 }}>Couldn't read a number from that photo. Type your weight instead.</Text> : null}
+        {reading && typeof reading === "object" ? (
+          <View accessibilityLiveRegion="polite" style={{ borderWidth: 1, borderColor: t.border, borderRadius: 10, padding: 12, marginTop: 8 }}>
+            <Text style={{ color: t.text, fontWeight: "600" }}>I read {reading.value} {unit}</Text>
+            {reading.low ? <Text style={{ color: t.muted, fontSize: 13 }}>Best guess, check before saving</Text> : null}
+            <Button title={`Use ${reading.value} ${unit}`} onPress={() => { setWeight(String(reading.value)); setReading(null); setSaved(false); }} />
+            <Button kind="link" title="No, I'll type it" onPress={() => setReading(null)} />
+          </View>
+        ) : null}
+        {photo ? <Button kind="link" title="Remove photo" onPress={() => { setPhoto(null); setReading(null); setSaved(false); }} /> : null}
       </View>
 
       <Text style={{ color: t.text, fontWeight: "600", marginBottom: 10 }}>How was your day? (optional)</Text>

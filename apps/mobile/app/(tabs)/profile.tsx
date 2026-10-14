@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { fromKg, isValidKg, isValidTimezone, toKg, type AuthResponse, type ProfileUpdate } from "@wid/shared";
 import { Button, ErrorText, Field, Screen, useTheme } from "../../components/ui";
 import { useAuth } from "../../lib/auth";
@@ -10,6 +11,7 @@ import { useProfile } from "../../lib/queries";
 export default function ProfileScreen() {
   const { user, logout, adoptSession } = useAuth();
   const t = useTheme();
+  const router = useRouter();
   const qc = useQueryClient();
   const { data: p } = useProfile();
 
@@ -83,6 +85,9 @@ export default function ProfileScreen() {
       {saved ? <Text accessibilityLiveRegion="polite" style={{ color: t.text, marginBottom: 8 }}>Saved ✓</Text> : null}
       <Button title="Save changes" onPress={() => save.mutate()} busy={save.isPending} />
 
+      <View style={{ marginTop: 16 }}>
+  <Button kind="link" title="Saved recipes" onPress={() => router.push("/recipes")} />
+      </View>
       <Text accessibilityRole="header" style={{ color: t.text, fontWeight: "700", fontSize: 18, marginTop: 32, marginBottom: 12 }}>Change password</Text>
       <Field label="Current password" secureTextEntry value={cur} onChangeText={setCur} autoCapitalize="none" />
       <Field label="New password" secureTextEntry value={next} onChangeText={setNext} autoCapitalize="none" />

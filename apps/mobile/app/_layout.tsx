@@ -33,6 +33,7 @@ function Gate() {
         <Stack.Screen name="group/new" options={{ headerShown: true, title: "New competition" }} />
         <Stack.Screen name="group/[id]/index" options={{ headerShown: true, title: "Competition" }} />
         <Stack.Screen name="group/[id]/manage" options={{ headerShown: true, title: "Manage" }} />
+        <Stack.Screen name="recipes" options={{ headerShown: true, title: "Saved recipes" }} />
         <Stack.Screen name="join" options={{ headerShown: true, title: "Join" }} />
         <Stack.Screen name="patterns/[groupId]/[userId]" options={{ headerShown: true, title: "Patterns" }} />
       </Stack.Protected>

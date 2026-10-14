@@ -12,6 +12,8 @@ export interface PhotoStorage {
   createUploadUrl(key: string, contentType: string): Promise<string>;
   createReadUrl(key: string): Promise<string>;
   remove(key: string): Promise<void>;
+  /** Raw bytes, for server-side use (the AI scale reader). */
+  read(key: string): Promise<{ bytes: Buffer; contentType: string } | null>;
 }
 
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -39,6 +41,14 @@ class R2Storage implements PhotoStorage {
   }
   async remove(key: string) {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+  async read(key: string) {
+    try {
+      const o = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+      return { bytes: Buffer.from(await o.Body!.transformToByteArray()), contentType: o.ContentType ?? "image/jpeg" };
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -80,6 +90,10 @@ export class DbStorage implements PhotoStorage {
   async remove(key: string) {
     await this.db.photo.deleteMany({ where: { key } });
   }
+  async read(key: string) {
+    const p = await this.db.photo.findUnique({ where: { key }, select: { bytes: true, contentType: true } });
+    return p ? { bytes: Buffer.from(p.bytes), contentType: p.contentType } : null;
+  }
 }
 
 /** R2 if configured (optional, better for scale); otherwise photos live in the database. */
@@ -93,6 +107,10 @@ export function createStorage(env: Env, db: Db): PhotoStorage {
 /** Test double. */
 export class MemoryStorage implements PhotoStorage {
   removed: string[] = [];
+  files = new Map<string, { bytes: Buffer; contentType: string }>();
+  async read(key: string) {
+    return this.files.get(key) ?? null;
+  }
   async createUploadUrl(key: string) {
     return `https://storage.test/put/${key}?sig=x`;
   }

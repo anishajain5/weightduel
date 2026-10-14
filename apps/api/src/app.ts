@@ -12,6 +12,8 @@ import { groupRoutes } from "./routes/groups";
 import { joinPageRoutes } from "./routes/join-page";
 import { photoRoutes } from "./routes/photos";
 import { patternRoutes } from "./routes/patterns";
+import { aiRoutes } from "./routes/ai";
+import { AnthropicClient, type AiClient } from "./ai/client";
 import { createStorage, type PhotoStorage } from "./storage";
 import { resetPageRoutes } from "./routes/reset-page";
 
@@ -20,12 +22,15 @@ export interface AppDeps {
   env: Env;
   mailer: Mailer;
   storage: PhotoStorage;
+  /** Undefined when ANTHROPIC_API_KEY isn't set; AI endpoints then answer 503. */
+  ai?: AiClient;
 }
 
-export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage }) {
+export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage; ai?: AiClient }) {
   const app = Fastify({ logger: input.env.NODE_ENV !== "test", trustProxy: input.env.NODE_ENV === "production" });
   const deps: AppDeps = { db: input.db, env: input.env, mailer: input.mailer ?? createMailer(input.env, app.log),
     storage: input.storage ?? createStorage(input.env, input.db),
+    ai: input.ai ?? (input.env.ANTHROPIC_API_KEY ? new AnthropicClient(input.env.ANTHROPIC_API_KEY) : undefined),
   };
 
   // Browser origins allowed to call the API (the Expo web app). Native apps send no Origin.
@@ -72,6 +77,7 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: P
   void app.register(async (i) => joinPageRoutes(i, deps));
   void app.register(async (i) => photoRoutes(i, deps));
   void app.register(async (i) => patternRoutes(i, deps));
+  void app.register(async (i) => aiRoutes(i, deps));
 
   return app;
 }

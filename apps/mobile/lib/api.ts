@@ -84,3 +84,32 @@ export async function api<T>(path: string, opts: { method?: string; body?: unkno
   if (res.status === 401 && auth && !(await getStoredRefreshToken())) onSessionLost?.();
   return parse<T>(res);
 }
+
+/**
+ * POST that answers with server-sent events ({t:"delta"|"done"|"error"}). Uses expo/fetch, which streams on
+ * native and web. Throws ApiError for normal JSON errors (limits, auth) that arrive before the stream opens.
+ */
+export async function apiStream(path: string, onEvent: (e: { t: string; text?: string; cached?: boolean; code?: string; message?: string }) => void): Promise<void> {
+  const { fetch: streamFetch } = await import("expo/fetch");
+  const go = () => streamFetch(`${API_URL}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: "{}" });
+  let res = await go();
+  if (res.status === 401 && (await refreshSession())) res = await go();
+  if (!res.ok || !res.body) {
+    const json = await res.json().catch(() => null);
+    throw new ApiError(res.status, json?.error?.code ?? "UNKNOWN", json?.error?.message ?? "Something went wrong");
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + 2);
+      if (chunk.startsWith("data: ")) onEvent(JSON.parse(chunk.slice(6)));
+    }
+  }
+}

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Text, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, G, Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import { daysBetween, fromKg, scoreBand, type HabitRow, type PatternsResponse, type Unit, type WeekRow } from "@wid/shared";
-import { Button, useTheme } from "./ui";
+import { Button, ErrorText, useTheme } from "./ui";
+import { apiStream, ApiError } from "../lib/api";
 
 const BAND = { good: "#16a34a", mid: "#d97706", poor: "#dc2626" } as const;
 const PAD = { l: 40, r: 28, t: 10, b: 24 };
@@ -122,6 +123,42 @@ export function PatternsView({ data, unit, days, onDays }: { data: PatternsRespo
       <HabitTable habits={data.habits} unit={unit} />
       <H>Week by week</H>
       <WeekTable weeks={data.weeks} unit={unit} />
+    </View>
+  );
+}
+
+/** "Why aren't we losing?" - streams the coach's read of your last 45 days. */
+export function CoachCard() {
+  const t = useTheme();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cached, setCached] = useState(false);
+
+  const ask = async () => {
+    setBusy(true); setError(null); setText(""); setCached(false);
+    try {
+      await apiStream("/ai/coach", (e) => {
+        if (e.t === "delta") setText((x) => x + (e.text ?? ""));
+        else if (e.t === "done") setCached(!!e.cached);
+        else if (e.t === "error") setError(e.message ?? "The coach couldn't finish.");
+      });
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Couldn't reach the coach. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={{ borderWidth: 1, borderColor: t.border, borderRadius: 14, padding: 16, marginBottom: 8 }}>
+      <Text accessibilityRole="header" style={{ color: t.text, fontSize: 18, fontWeight: "700", marginBottom: 4 }}>Why aren't we losing?</Text>
+      <Text style={{ color: t.muted, fontSize: 13, marginBottom: 10 }}>The coach reads your last 45 days (weights, habits, mood and notes) and points at what lines up with stalls.</Text>
+      {text ? <Text accessibilityLiveRegion="polite" style={{ color: t.text, lineHeight: 22, marginBottom: 10 }}>{text}</Text> : null}
+      <ErrorText>{error}</ErrorText>
+      <Button title={text ? "Ask again" : "Ask the coach"} onPress={ask} busy={busy} />
+      {cached && text ? <Text style={{ color: t.muted, fontSize: 12, marginTop: 6 }}>Nothing new since your last read.</Text> : null}
+      <Text style={{ color: t.muted, fontSize: 12, marginTop: 6 }}>AI-generated from your own data. Not medical advice.</Text>
     </View>
   );
 }
