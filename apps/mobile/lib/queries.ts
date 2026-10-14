@@ -30,3 +30,9 @@ export const useSeries = (id: string, mode: SeriesMode | null) =>
 
 export const useFeed = (id: string) =>
   useQuery({ queryKey: ["group", id, "feed"], queryFn: async () => (await api<{ items: FeedItem[] }>(`/groups/${id}/feed`)).items });
+
+import type { PatternsResponse } from "@wid/shared";
+
+/** `/patterns/me` or `/patterns/:groupId/:userId`. */
+export const usePatterns = (path: string, days: number) =>
+  useQuery({ queryKey: ["patterns", path, days], queryFn: () => api<PatternsResponse>(`${path}?days=${days}`) });

@@ -108,6 +108,10 @@ export default function GroupScreen() {
             <Text style={{ color: t.muted, fontSize: 12 }}>
               {r.daysLogged} days logged · {r.streak}d streak{r.weightKg !== null ? ` · ${fromKg(r.weightKg, unit)} ${unit}` : ""}
             </Text>
+            {g.privacy === "actual" && !r.isMe ? (
+              <Text accessibilityRole="link" onPress={() => router.push({ pathname: "/patterns/[groupId]/[userId]", params: { groupId: id, userId: r.userId } })}
+                style={{ color: t.text, fontSize: 12, textDecorationLine: "underline", marginTop: 2 }}>See patterns</Text>
+            ) : null}
           </View>
           <Text style={{ color: t.text, fontWeight: "700", fontSize: 16 }}>{fmtScore(r)}</Text>
         </View>

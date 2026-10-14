@@ -11,6 +11,7 @@ import { weighInRoutes } from "./routes/weigh-ins";
 import { groupRoutes } from "./routes/groups";
 import { joinPageRoutes } from "./routes/join-page";
 import { photoRoutes } from "./routes/photos";
+import { patternRoutes } from "./routes/patterns";
 import { createStorage, type PhotoStorage } from "./storage";
 import { resetPageRoutes } from "./routes/reset-page";
 
@@ -70,6 +71,7 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: P
   void app.register(async (i) => groupRoutes(i, deps));
   void app.register(async (i) => joinPageRoutes(i, deps));
   void app.register(async (i) => photoRoutes(i, deps));
+  void app.register(async (i) => patternRoutes(i, deps));
 
   return app;
 }

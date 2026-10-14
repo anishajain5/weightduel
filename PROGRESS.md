@@ -54,3 +54,10 @@ Photos live in the `photos` table (`bytea`). The "pre-signed" URLs point back at
 - **R2 is still supported:** fill in the four `R2_*` values in `apps/api/.env` and the API switches to R2 automatically (then the bucket needs private access, an Object Read & Write token, and a CORS rule for the web origin: `PUT`/`GET`, header `Content-Type`). Existing DB photos would not be migrated automatically.
 - **Why it's not ideal long term:** photos bloat the database, add to request-unit cost, and are served through the API. Fine for a friends-sized app.
 - **Gaps:** photos uploaded but never attached to an entry are orphaned (no cleanup job yet); the 1-second DB latency applies to every image load.
+
+## M4 — Patterns
+
+- `packages/shared/src/analytics.ts`: per-habit hit rate, avg daily change when done vs skipped, verdict (good / small / none / need_more), week-by-week table, daily score bands. Unit tested.
+- API: `GET /patterns/me?days=` and `GET /patterns/:groupId/:userId` (403 `PATTERNS_HIDDEN` unless the group privacy is "actual"). Queries select only date, weight, habits and mood; notes are never read.
+- Mobile: **Why** tab with overlay chart (weight line + score bars, hand-drawn with react-native-svg), habit table and weekly table, 30/90/180-day ranges. Leaderboard rows link to a member's patterns when the group is "actual".
+- Not yet: Coach button (M5).
