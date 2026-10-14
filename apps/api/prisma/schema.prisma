@@ -92,6 +92,7 @@ model EmailToken {
   purpose   EmailTokenPurpose
   tokenHash String            @map("token_hash")
   attempts  Int               @default(0)
+  newEmail  String?           @map("new_email")
   expiresAt DateTime          @map("expires_at") @db.Timestamptz
   usedAt    DateTime?         @map("used_at") @db.Timestamptz
   createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz
@@ -237,4 +238,14 @@ model AiUsage {
 
   @@index([userId, feature, createdAt])
   @@map("ai_usage")
+}
+
+/// Sliding-window rate limit events (login failures, reset requests, ...).
+model RateEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key       String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([key, createdAt])
+  @@map("rate_events")
 }
