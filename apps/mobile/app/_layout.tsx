@@ -5,6 +5,8 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { useProfile } from "../lib/queries";
+import { usePushRegistration } from "../lib/push";
+import { Sentry } from "../lib/sentry";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
@@ -12,6 +14,7 @@ function Gate() {
   const { status, user, verifySkipped } = useAuth();
   const ready = status === "signedIn" && (!!user?.emailVerified || verifySkipped);
   const profile = useProfile(ready);
+  usePushRegistration(ready && !!profile.data?.onboarded);
   // Never leak one account's cached data into the next session.
   useEffect(() => {
     if (status === "signedOut") queryClient.clear();
@@ -34,6 +37,8 @@ function Gate() {
         <Stack.Screen name="group/[id]/index" options={{ headerShown: true, title: "Competition" }} />
         <Stack.Screen name="group/[id]/manage" options={{ headerShown: true, title: "Manage" }} />
         <Stack.Screen name="recipes" options={{ headerShown: true, title: "Saved recipes" }} />
+        <Stack.Screen name="notifications/index" options={{ headerShown: true, title: "Notifications" }} />
+        <Stack.Screen name="notifications/settings" options={{ headerShown: true, title: "Settings" }} />
         <Stack.Screen name="join" options={{ headerShown: true, title: "Join" }} />
         <Stack.Screen name="patterns/[groupId]/[userId]" options={{ headerShown: true, title: "Patterns" }} />
       </Stack.Protected>
@@ -50,11 +55,12 @@ function Gate() {
       </Stack.Protected>
       {/* Reachable from a reset deep link whether or not a session exists. */}
       <Stack.Screen name="reset" />
+      <Stack.Screen name="legal" options={{ headerShown: true, title: "Legal" }} />
     </Stack>
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -64,3 +70,5 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

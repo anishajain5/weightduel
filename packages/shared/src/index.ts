@@ -8,3 +8,4 @@ export * from "./groups";
 export * from "./score";
 export * from "./analytics";
 export * from "./recipes";
+export * from "./notifications";

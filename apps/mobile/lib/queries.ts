@@ -41,3 +41,11 @@ import type { SavedRecipe } from "@wid/shared";
 
 export const useSavedRecipes = () =>
   useQuery({ queryKey: ["recipes"], queryFn: async () => (await api<{ recipes: SavedRecipe[] }>("/recipes")).recipes });
+
+import type { NotificationList, NotificationPrefRow } from "@wid/shared";
+
+export const useNotifications = (enabled = true) =>
+  useQuery({ queryKey: ["notifications"], queryFn: () => api<NotificationList>("/notifications"), enabled, refetchInterval: 60_000 });
+
+export const useNotificationPrefs = () =>
+  useQuery({ queryKey: ["notificationPrefs"], queryFn: async () => (await api<{ prefs: NotificationPrefRow[] }>("/notification-prefs")).prefs });

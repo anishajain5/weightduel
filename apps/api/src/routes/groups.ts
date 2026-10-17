@@ -58,7 +58,19 @@ interface Standing {
 
 const newCode = () => Array.from({ length: 6 }, () => JOIN_CODE_ALPHABET[randomInt(JOIN_CODE_ALPHABET.length)]).join("");
 
-export async function groupRoutes(app: FastifyInstance, { db, env, storage }: AppDeps) {
+export interface GroupJobs {
+  /** Freezes every active competition whose end date has passed (the scheduler calls this). */
+  finalizeDue(): Promise<void>;
+  /** Current ranking (1 = leading) of members who have a score. */
+  ranks(groupId: string): Promise<{ userId: string; rank: number; displayName: string }[]>;
+}
+declare module "fastify" {
+  interface FastifyInstance {
+    groupJobs: GroupJobs;
+  }
+}
+
+export async function groupRoutes(app: FastifyInstance, { db, env, storage, notifier }: AppDeps) {
   const authenticate = makeAuthenticate(db, env.JWT_SECRET);
   const verified = [authenticate, requireVerified];
   const limiter = new RateLimiter(db);
@@ -160,6 +172,23 @@ export async function groupRoutes(app: FastifyInstance, { db, env, storage }: Ap
     });
     return loadGroup(g.id);
   }
+
+  app.decorate("groupJobs", {
+    async finalizeDue() {
+      const groups = await db.group.findMany({ where: { status: "active", endDate: { lt: new Date(Date.now() + 36 * 3600 * 1000) } }, select: { id: true } });
+      for (const { id } of groups) await finalizeIfDue(await loadGroup(id));
+    },
+    async ranks(groupId: string) {
+      const g = await loadGroup(groupId);
+      const today = groupToday(g);
+      const standings = await standingsFor(g, g.endDate && ds(g.endDate) < today ? ds(g.endDate) : today);
+      return standings
+        .map((s) => ({ s, v: scoreOf(g, s) }))
+        .filter((x) => x.v !== null)
+        .sort((a, b) => b.v! - a.v!)
+        .map((x, i) => ({ userId: x.s.userId, rank: i + 1, displayName: x.s.displayName }));
+    },
+  } satisfies GroupJobs);
 
   function summary(g: GroupFull, role: "owner" | "member"): GroupSummary {
     return {
@@ -299,7 +328,14 @@ export async function groupRoutes(app: FastifyInstance, { db, env, storage }: Ap
         });
       }),
     );
-    return detail(await loadGroup(g.id), "member");
+    const joined = await loadGroup(g.id);
+    const who = joined.members.find((m) => m.userId === userId)?.user.displayName ?? "Someone";
+    // Best effort: a failed notification must never fail the join.
+    await notifier.send({
+      userId: g.ownerId, type: "member_joined", title: "New member", body: `${who} joined ${g.name}`,
+      url: `/group/${g.id}`, dedupeKey: `member_joined:${g.id}:${userId}:${Date.now()}`,
+    }).catch((e) => app.log.error({ err: e }, "member_joined notify failed"));
+    return detail(joined, "member");
   });
 
   app.get("/groups/:id", { preHandler: authenticate }, async (req) => {

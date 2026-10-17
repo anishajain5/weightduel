@@ -6,6 +6,7 @@ export interface Mail {
   subject: string;
   text: string;
   html?: string;
+  attachments?: { filename: string; content: string; contentType?: string }[];
 }
 
 /** Provider interface (FR-NOT-7): everything else in the app only sees `Mailer`. */
@@ -40,7 +41,10 @@ class ResendMailer implements Mailer {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: this.from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html }),
+      body: JSON.stringify({
+        from: this.from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html,
+        attachments: mail.attachments?.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") })),
+      }),
     });
     if (!res.ok) throw new Error(`Resend responded ${res.status}`);
   }

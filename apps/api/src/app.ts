@@ -1,5 +1,5 @@
 import cors from "@fastify/cors";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import type { Db } from "./db";
 import type { Env } from "./env";
@@ -13,9 +13,19 @@ import { joinPageRoutes } from "./routes/join-page";
 import { photoRoutes } from "./routes/photos";
 import { patternRoutes } from "./routes/patterns";
 import { aiRoutes } from "./routes/ai";
+import { notificationRoutes } from "./routes/notifications";
+import { Notifier } from "./notify/notifier";
+import { ExpoPushSender, type PushSender } from "./notify/push";
+import * as Sentry from "@sentry/node";
 import { AnthropicClient, type AiClient } from "./ai/client";
 import { createStorage, type PhotoStorage } from "./storage";
 import { resetPageRoutes } from "./routes/reset-page";
+
+declare module "fastify" {
+  interface FastifyInstance {
+    notifier: Notifier;
+  }
+}
 
 export interface AppDeps {
   db: Db;
@@ -24,11 +34,14 @@ export interface AppDeps {
   storage: PhotoStorage;
   /** Undefined when ANTHROPIC_API_KEY isn't set; AI endpoints then answer 503. */
   ai?: AiClient;
+  notifier: Notifier;
 }
 
-export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage; ai?: AiClient }) {
+export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: PhotoStorage; ai?: AiClient; push?: PushSender; notifier?: Notifier }) {
   const app = Fastify({ logger: input.env.NODE_ENV !== "test", trustProxy: input.env.NODE_ENV === "production" });
-  const deps: AppDeps = { db: input.db, env: input.env, mailer: input.mailer ?? createMailer(input.env, app.log),
+  const mailer = input.mailer ?? createMailer(input.env, app.log);
+  const deps: AppDeps = { db: input.db, env: input.env, mailer,
+    notifier: input.notifier ?? new Notifier(input.db, input.env, input.push ?? new ExpoPushSender(input.env.EXPO_ACCESS_TOKEN), mailer, app.log),
     storage: input.storage ?? createStorage(input.env, input.db),
     ai: input.ai ?? (input.env.ANTHROPIC_API_KEY ? new AnthropicClient(input.env.ANTHROPIC_API_KEY) : undefined),
   };
@@ -64,6 +77,7 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: P
       return reply.code(e.statusCode).send({ error: { code: "BAD_REQUEST", message: e.message ?? "Bad request" } });
     }
     app.log.error(err);
+    if (input.env.SENTRY_DSN) Sentry.captureException(err);
     return reply.code(500).send({ error: { code: "INTERNAL", message: "Something went wrong" } });
   });
 
@@ -73,11 +87,15 @@ export function buildApp(input: { db: Db; env: Env; mailer?: Mailer; storage?: P
   void app.register(async (i) => resetPageRoutes(i, deps));
   void app.register(async (i) => meRoutes(i, deps));
   void app.register(async (i) => weighInRoutes(i, deps));
-  void app.register(async (i) => groupRoutes(i, deps));
+  // Not encapsulated: it decorates `groupJobs` onto the root instance for the scheduler.
+  void app.register(Object.assign(async (i: FastifyInstance) => groupRoutes(i, deps), { [Symbol.for("skip-override")]: true }));
   void app.register(async (i) => joinPageRoutes(i, deps));
   void app.register(async (i) => photoRoutes(i, deps));
   void app.register(async (i) => patternRoutes(i, deps));
   void app.register(async (i) => aiRoutes(i, deps));
+  void app.register(async (i) => notificationRoutes(i, deps));
+
+  app.decorate("notifier", deps.notifier);
 
   return app;
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Switch, Text, View } from "react-native";
 import { displayNameSchema, emailSchema, passwordSchema } from "@wid/shared";
 import { Button, ErrorText, Field, Screen, useTheme } from "../../components/ui";
@@ -9,6 +9,7 @@ import { useSubmit } from "../../lib/useSubmit";
 export default function Signup() {
   const { signup } = useAuth();
   const t = useTheme();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +38,10 @@ export default function Signup() {
       <Field label="Confirm password" value={confirm} onChangeText={setConfirm} secureTextEntry textContentType="newPassword" />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <Switch accessibilityLabel="Accept Terms and Privacy Policy" value={accepted} onValueChange={setAccepted} />
-        <Text style={{ color: t.text, flex: 1 }}>I accept the Terms and Privacy Policy</Text>
+        <Text style={{ color: t.text, flex: 1 }}>
+          I accept the <Text style={{ textDecorationLine: "underline" }} accessibilityRole="link" onPress={() => router.push("/legal?doc=terms" as never)}>Terms</Text> and{" "}
+          <Text style={{ textDecorationLine: "underline" }} accessibilityRole="link" onPress={() => router.push("/legal?doc=privacy" as never)}>Privacy Policy</Text>
+        </Text>
       </View>
       <ErrorText>{error}</ErrorText>
       <Button title="Create account" onPress={submit} busy={busy} />

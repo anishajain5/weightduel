@@ -8,19 +8,41 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "app.weighinduel.mobile",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "app.weighinduel.mobile"
+      "package": "app.weighinduel.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563eb"
+      }
     },
     "plugins": [
       "expo-router",
       "expo-status-bar",
       "expo-secure-store",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-notifications",
+        {
+          "color": "#2563eb"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563eb"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }

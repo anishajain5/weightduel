@@ -72,3 +72,26 @@ Photos live in the `photos` table (`bytea`). The "pre-signed" URLs point back at
 - Mobile: Coach card on **Why**, **Cravings** tab (chips, preferences saved to profile, recipe card, "Give me a different one", Save), **Saved recipes** screen (linked from Profile and Cravings), scale reader suggestion on the Log photo.
 - Not done: group standings in the coach prompt (BRD marks it optional/"if privacy allows"). Not verified against the real Anthropic API yet (needs a key); tests use a fake model.
 - Migration `20261014180000_coach_readings`.
+
+## M6: Notifications (done)
+- API: `notify/` (Notifier, Expo push sender, scheduler), `/push-tokens`, `/notifications` (+ `/read`), `/notification-prefs`, signed `/unsubscribe`.
+- Every notification has a unique `dedupeKey`, so the 5-minute scheduler (with a 30-minute catch-up window) never double-sends, even after a restart.
+- Quiet hours (default 22:00–07:00 in the user's time zone) silence push only; the inbox and email are unaffected.
+- Types: daily reminder, streak at risk, member joined, overtaken, digest (off by default), weekly recap (+email), competition start / ending soon / ended with winner (+email). Overtaken uses `group_members.last_rank`.
+- Mobile: push registration (native, skipped silently without an EAS `projectId` or on simulators), tap-to-open deep links, inbox with unread badge in the tab header, per-type push/email settings (Profile → Notification settings).
+- Fixed along the way: `groupJobs` was decorated inside an encapsulated plugin so the scheduler could not see it; the groups plugin now skips encapsulation.
+- Not verified on a real device: Expo push delivery.
+
+## M7: Ship (done, pending your accounts)
+- Account: `POST /me/export` (CSV emailed as an attachment, 3/day, spreadsheet-formula-safe), `DELETE /me` (password required; owned groups go to the longest-standing member or are removed; winner references cleared; photos deleted; confirmation email).
+- Mobile: export and delete in Profile, Privacy/Terms screens (linked from signup and Profile). **The legal text is a draft and needs a lawyer's review before public launch.**
+- Sentry: API (`SENTRY_DSN`) and mobile JS (`EXPO_PUBLIC_SENTRY_DSN`); both are no-ops when unset. Source-map upload plugin intentionally not enabled.
+- Assets: generated placeholder icon / adaptive icon / splash in `apps/mobile/assets`. Replace with real artwork.
+- `apps/mobile/eas.json` has development / preview / production profiles. Replace `https://api.example.com` with your deployed API URL.
+
+### Remaining steps only you can do
+1. Set `ANTHROPIC_API_KEY`, `AI_DAILY_BUDGET_USD`; SMTP or Resend credentials (`RESEND_API_KEY`, `MAIL_FROM`); `REQUIRE_EMAIL_VERIFICATION=true` in production.
+2. Deploy the API (any Node 22 host, e.g. Fly/Render/Railway): `pnpm --filter @wid/api build`, `prisma migrate deploy`, `pnpm start`. Set `APP_BASE_URL` to the public URL, `SCHEDULER_ENABLED=true` on exactly one instance, and a strong `JWT_SECRET`.
+3. `cd apps/mobile && eas login && eas init` (writes the `projectId` push needs), then `eas build -p ios|android --profile preview`.
+4. Apple Developer / Google Play accounts, store listings, and a real domain for universal links.
+5. Host the web build: `npx expo export --platform web` → static hosting; set `EXPO_PUBLIC_API_URL` first.

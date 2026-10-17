@@ -18,6 +18,10 @@ const schema = z.object({
   AI_DAILY_BUDGET_USD: z.coerce.number().default(5),
   /** Set to "false" to mark new accounts verified at signup and skip the verification email (early development). */
   REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+  SENTRY_DSN: z.string().optional(),
+  /** Run the notification scheduler inside this process (single instance only). */
+  SCHEDULER_ENABLED: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),

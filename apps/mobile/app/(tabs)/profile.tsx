@@ -66,6 +66,21 @@ export default function ProfileScreen() {
     onError: (e) => { setPwMsg(null); setPwErr(e instanceof ApiError ? e.message : "Couldn't change password."); },
   });
 
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const exportData = useMutation({
+    mutationFn: () => api("/me/export", { method: "POST" }),
+    onSuccess: () => setExportMsg(`We emailed your data to ${user?.email}.`),
+    onError: (e) => setExportMsg(e instanceof ApiError ? e.message : "Couldn't start the export."),
+  });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [delPw, setDelPw] = useState("");
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const deleteAccount = useMutation({
+    mutationFn: () => api("/me", { method: "DELETE", body: { password: delPw } }),
+    onSuccess: () => logout(),
+    onError: (e) => setDelErr(e instanceof ApiError ? e.message : "Couldn't delete the account."),
+  });
+
   return (
     <Screen title="Profile" subtitle={user ? user.email : undefined}>
       {user && !user.emailVerified ? (
@@ -87,6 +102,7 @@ export default function ProfileScreen() {
 
       <View style={{ marginTop: 16 }}>
   <Button kind="link" title="Saved recipes" onPress={() => router.push("/recipes")} />
+  <Button kind="link" title="Notification settings" onPress={() => router.push("/notifications/settings" as never)} />
       </View>
       <Text accessibilityRole="header" style={{ color: t.text, fontWeight: "700", fontSize: 18, marginTop: 32, marginBottom: 12 }}>Change password</Text>
       <Field label="Current password" secureTextEntry value={cur} onChangeText={setCur} autoCapitalize="none" />
@@ -94,6 +110,23 @@ export default function ProfileScreen() {
       <ErrorText>{pwErr}</ErrorText>
       {pwMsg ? <Text accessibilityLiveRegion="polite" style={{ color: t.text, marginBottom: 8 }}>{pwMsg}</Text> : null}
       <Button title="Change password" onPress={() => changePw.mutate()} busy={changePw.isPending} disabled={!cur || !next} />
+
+      <Text accessibilityRole="header" style={{ color: t.text, fontWeight: "700", fontSize: 18, marginTop: 32, marginBottom: 12 }}>Your data</Text>
+      <Button kind="link" title="Email me my data (CSV)" onPress={() => exportData.mutate()} busy={exportData.isPending} />
+      {exportMsg ? <Text accessibilityLiveRegion="polite" style={{ color: t.text, marginBottom: 8 }}>{exportMsg}</Text> : null}
+      <Button kind="link" title="Privacy Policy" onPress={() => router.push("/legal?doc=privacy" as never)} />
+      <Button kind="link" title="Terms of Use" onPress={() => router.push("/legal?doc=terms" as never)} />
+      {confirmDelete ? (
+        <View style={{ marginTop: 12 }}>
+          <Text style={{ color: t.error, marginBottom: 8 }}>This permanently deletes your account, entries and photos. Competitions you own pass to the longest-standing member.</Text>
+          <Field label="Confirm with your password" secureTextEntry value={delPw} onChangeText={setDelPw} autoCapitalize="none" />
+          <ErrorText>{delErr}</ErrorText>
+          <Button title="Delete my account" onPress={() => deleteAccount.mutate()} busy={deleteAccount.isPending} disabled={!delPw} />
+          <Button kind="link" title="Cancel" onPress={() => { setConfirmDelete(false); setDelPw(""); setDelErr(null); }} />
+        </View>
+      ) : (
+        <Button kind="link" title="Delete account" onPress={() => setConfirmDelete(true)} />
+      )}
 
       <View style={{ marginTop: 32 }}>
         <Button title="Log out" onPress={() => logout()} />

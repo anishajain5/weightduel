@@ -143,6 +143,7 @@ model GroupMember {
   @@id([groupId, userId])
   @@index([userId])
   @@map("group_members")
+  lastRank Int? @map("last_rank")
 }
 
 /// Scale photos stored in the database (used when R2 isn't configured).

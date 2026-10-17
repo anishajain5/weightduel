@@ -61,7 +61,7 @@ export default function Onboarding() {
       ) : null}
       {step === 2 ? (
         <>
-          <Text style={{ color: t.muted, marginBottom: 16 }}>We'll nudge you once a day to log. Notifications arrive in a later update; leave blank for no reminder.</Text>
+          <Text style={{ color: t.muted, marginBottom: 16 }}>We'll nudge you once a day to log. Leave blank for no reminder. You can change this and your notification settings any time in Profile.</Text>
           <Field label="Reminder time (24h, HH:MM)" value={reminder} onChangeText={setReminder} placeholder="08:00" autoCapitalize="none" />
         </>
       ) : null}
