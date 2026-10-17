@@ -95,3 +95,11 @@ Photos live in the `photos` table (`bytea`). The "pre-signed" URLs point back at
 3. `cd apps/mobile && eas login && eas init` (writes the `projectId` push needs), then `eas build -p ios|android --profile preview`.
 4. Apple Developer / Google Play accounts, store listings, and a real domain for universal links.
 5. Host the web build: `npx expo export --platform web` → static hosting; set `EXPO_PUBLIC_API_URL` first.
+
+## Deployed on Vercel (web only)
+- One Vercel project, `weightduel`, serves the Expo web build as static files and the Fastify API as a single function under `/api` (same origin, so no CORS). Live at https://weightduel.vercel.app.
+- `vercel.json` build: `@wid/api vercel-build` (prisma generate + esbuild bundle to `/api/index.js`, git-ignored) then `@wid/mobile build:web`. `EXPO_PUBLIC_API_URL` and `APP_BASE_URL` are `https://weightduel.vercel.app/api`.
+- Pushes to `main` redeploy automatically (the project is connected to the GitHub repo). Env vars live in Vercel (Production); change them with `vercel env`.
+- Scheduler: Vercel Cron calls `/api/internal/cron` (needs `CRON_SECRET`). The Hobby plan allows one run per day (13:00 UTC), which is too coarse for the 30-minute catch-up window; hourly or 5-minute runs need Pro. Push reminders only matter for the native apps, so this mostly affects emails.
+- Functions are capped at 60 s (AI coach streaming fits). Production uses the same CockroachDB as local dev; test users end in `@test.invalid`.
+- Email: no provider is configured, so password-reset and verification emails are only logged. `REQUIRE_EMAIL_VERIFICATION=false`.

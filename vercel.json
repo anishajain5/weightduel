@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @wid/api run vercel-build && pnpm --filter @wid/mobile run build:web",
+  "outputDirectory": "apps/mobile/dist",
+  "functions": { "api/index.js": { "maxDuration": 60 } },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "crons": [{ "path": "/api/internal/cron", "schedule": "0 13 * * *" }]
+}
