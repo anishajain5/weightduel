@@ -111,7 +111,10 @@ export async function authRoutes(app: FastifyInstance, { db, env, mailer }: AppD
     let user;
     try {
       user = await db.user.create({
-        data: { email: body.email, passwordHash, displayName: body.displayName, timezone: body.timezone ?? "UTC" },
+        data: {
+          email: body.email, passwordHash, displayName: body.displayName, timezone: body.timezone ?? "UTC",
+          ...(env.REQUIRE_EMAIL_VERIFICATION ? {} : { emailVerifiedAt: new Date() }),
+        },
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -119,8 +122,10 @@ export async function authRoutes(app: FastifyInstance, { db, env, mailer }: AppD
       }
       throw e;
     }
-    const code = await createCode(user.id, "verify");
-    await sendQuietly(verifyEmailMail(user.email, user.displayName, code));
+    if (env.REQUIRE_EMAIL_VERIFICATION) {
+      const code = await createCode(user.id, "verify");
+      await sendQuietly(verifyEmailMail(user.email, user.displayName, code));
+    }
     return reply.code(201).send(await issueSession(user, body.deviceLabel));
   });
 

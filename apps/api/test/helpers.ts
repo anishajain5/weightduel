@@ -9,6 +9,7 @@ export function testEnv() {
   return loadEnv({
     ...process.env,
     NODE_ENV: "test",
+    REQUIRE_EMAIL_VERIFICATION: "true",
     DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://u:p@localhost:26257/x",
     JWT_SECRET: "test-secret-test-secret-test-secret-test-secret",
     APP_BASE_URL: "http://localhost:3000",

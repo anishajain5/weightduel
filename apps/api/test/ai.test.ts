@@ -16,7 +16,7 @@ const nextIp = () => `10.4.${Math.floor(n / 250)}.${(n++ % 250) + 1}`;
 const uniq = () => `ai-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}@test.invalid`;
 const today = () => todayInTz("UTC");
 
-const call = (method: "GET" | "POST" | "PUT" | "DELETE", url: string, token: string, payload?: unknown) =>
+const call = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, token: string, payload?: unknown) =>
   app.inject({ method, url, payload: payload as object | undefined, remoteAddress: nextIp(), headers: { authorization: `Bearer ${token}` } });
 async function newUser(displayName: string) {
   const res = await app.inject({ method: "POST", url: "/auth/signup", remoteAddress: nextIp(), payload: { displayName, email: uniq(), password: "correct horse battery", acceptTerms: true } });

@@ -16,6 +16,8 @@ const schema = z.object({
   AI_MODEL_FAST: z.string().default("claude-haiku-5-5"),
   AI_MODEL_SMART: z.string().default("claude-sonnet-5-5"),
   AI_DAILY_BUDGET_USD: z.coerce.number().default(5),
+  /** Set to "false" to mark new accounts verified at signup and skip the verification email (early development). */
+  REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
   EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(465),
